@@ -83,7 +83,7 @@ I hope you enjoy your Neovim journey,
 
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
-
+vim.cmd 'language en_US'
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -190,6 +190,10 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+-- Move line with J and K in V-mode
+vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv")
+vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
+
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -228,6 +232,15 @@ vim.opt.rtp:prepend(lazypath)
 --
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
+  {
+    dir = '/Users/mabe/Projects/colorscheme',
+    lazy = false,
+    config = function()
+      vim.cmd [[
+        colorscheme colorscheme
+      ]]
+    end,
+  },
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
@@ -275,7 +288,10 @@ require('lazy').setup({
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
     config = function() -- This is the function that runs, AFTER loading
-      require('which-key').setup()
+      require('which-key').setup {
+        -- Disable icons
+        icons = { mappings = false },
+      }
 
       -- Document existing key chains
       require('which-key').add {
@@ -299,6 +315,7 @@ require('lazy').setup({
 
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
+    lazy = false,
     event = 'VimEnter',
     branch = '0.1.x',
     dependencies = {
@@ -318,7 +335,7 @@ require('lazy').setup({
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
 
-      -- Useful for getting pretty icons, but requires a Nerd Font.
+      -- Useful for getting pretty cons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
     },
     config = function()
@@ -356,6 +373,11 @@ require('lazy').setup({
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
+          },
+          project = {
+            base_dirs = {
+              '~/Projects',
+            },
           },
         },
       }
@@ -399,6 +421,11 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
+
+      -- Shortcut for searching Alacritty configuration files
+      vim.keymap.set('n', '<leader>sa', function()
+        builtin.find_files { cwd = vim.fn.expand '~/.config/alacritty' }
+      end, { desc = '[S]earch [A]lacritty files' })
     end,
   },
 
@@ -572,15 +599,37 @@ require('lazy').setup({
         -- clangd = {},
         -- gopls = {},
         -- pyright = {},
-        -- rust_analyzer = {},
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`tsserver`) will work just fine
-        -- tsserver = {},
-        --
+        tsserver = {
+          -- Disable formatting, as we'll be using conform for that
+          on_attach = function(client)
+            client.server_capabilities.documentFormattingProvider = false
+          end,
+        },
+        eslint = {
+          root_dir = function()
+            return vim.fn.getcwd()
+          end,
+          -- Disable formatting, as we'll be using conform for that
+          on_attach = function(client, _)
+            client.server_capabilities.documentFormattingProvider = false
+            -- vim.api.nvim_create_autocmd('BufWritePre', {
+            --   callback = function()
+            --     vim.lsp.buf.format()
+            --   end,
+            -- })
+            -- vim.api.nvim_create_autocmd('BufWritePre', {
+            --   buffer = bufnr,
+            --   command = 'EslintFixAll',
+            -- })
+          end,
+        },
 
         lua_ls = {
           -- cmd = {...},
@@ -661,7 +710,11 @@ require('lazy').setup({
         -- python = { "isort", "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        typescript = { 'eslintd' },
+        typescriptreact = { 'eslintd' },
+        javascript = { 'eslintd' },
+        javascriptreact = { 'eslintd' },
+        scss = { 'prettierd' },
       },
     },
   },
@@ -844,7 +897,7 @@ require('lazy').setup({
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'rust', 'typescript', 'sql' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -868,6 +921,73 @@ require('lazy').setup({
       --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
       --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    end,
+  },
+
+  { 'github/copilot.vim' },
+  { 'tpope/vim-fugitive' },
+  { 'rktjmp/lush.nvim' },
+  -- {
+  --   'nvim-telescope/telescope-file-browser.nvim',
+  --   dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
+  --   config = function()
+  --     require('telescope').load_extension 'file_browser'
+  --     -- open file_browser with the path of the current buffer
+  --     vim.api.nvim_set_keymap('n', '<space>fb', ':Telescope file_browser<CR>', { noremap = true })
+  --     vim.api.nvim_set_keymap('n', '<space>ff', ':Telescope file_browser path=%:p:h select_buffer=true<CR>', { noremap = true })
+  --   end,
+  -- },
+  -- {
+  --   'nvim-telescope/telescope-project.nvim',
+  --   dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-telescope/telescope-file-browser.nvim' },
+  --   config = function()
+  --     require('telescope').load_extension 'project'
+  --     -- open project picker
+  --     vim.api.nvim_set_keymap('n', '<space>pp', ':Telescope project<CR>', { noremap = true })
+  --   end,
+  -- },
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
+      'MunifTanjim/nui.nvim',
+      -- "3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
+    },
+    config = function()
+      require('neo-tree').setup {
+        window = {
+          width = 80,
+        },
+      }
+      vim.keymap.set('n', '<C-p>', '<Cmd>Neotree toggle<CR>')
+      vim.keymap.set('n', '<C-c>', '<Cmd>Neotree filesystem reveal left<CR>')
+    end,
+  },
+  {
+    'renerocksai/telekasten.nvim',
+    dependencies = { 'nvim-telescope/telescope.nvim' },
+    config = function()
+      require('telekasten').setup {
+        home = vim.fn.expand '~/Notes', -- Put the name of your notes directory here
+      }
+      -- Launch panel if nothing is typed after <leader>z
+      vim.keymap.set('n', '<leader>z', '<cmd>Telekasten panel<CR>')
+
+      -- Most used functions
+      vim.keymap.set('n', '<leader>zf', '<cmd>Telekasten find_notes<CR>')
+      vim.keymap.set('n', '<leader>zg', '<cmd>Telekasten search_notes<CR>')
+      vim.keymap.set('n', '<leader>zd', '<cmd>Telekasten goto_today<CR>')
+      vim.keymap.set('n', '<leader>zz', '<cmd>Telekasten follow_link<CR>')
+      vim.keymap.set('n', '<leader>zn', '<cmd>Telekasten new_note<CR>')
+      vim.keymap.set('n', '<leader>zc', '<cmd>Telekasten show_calendar<CR>')
+      vim.keymap.set('n', '<leader>zb', '<cmd>Telekasten show_backlinks<CR>')
+      vim.keymap.set('n', '<leader>zI', '<cmd>Telekasten insert_img_link<CR>')
+      vim.keymap.set('n', '<leader>zt', '<cmd>Telekasten toggle_todo<CR>')
+
+      -- Call insert link automatically when we start typing a link
+      -- vim.keymap.set('i', '[[', '<cmd>Telekasten insert_link<CR>')
     end,
   },
 
